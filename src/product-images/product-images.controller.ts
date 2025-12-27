@@ -4,7 +4,7 @@ import {
   Delete,
   Param,
   Post,
-  UploadedFile,
+  Req,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
@@ -16,7 +16,7 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { FileInterceptor } from "@nestjs/platform-express";
+import { AnyFilesInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -28,6 +28,7 @@ type UploadedImageFile = {
   mimetype: string;
   originalname: string;
   size: number;
+  fieldname?: string;
 };
 
 @ApiTags("Product Images")
@@ -45,15 +46,15 @@ export class ProductImagesController {
   @Post(":productId/image")
   @ApiBearerAuth("JWT-auth")
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: "Upload product image (single)" })
+  @ApiOperation({ summary: "Upload product image(s) (max 5)" })
   @ApiConsumes("multipart/form-data")
   @ApiResponse({ status: 201, type: UploadProductImageResponse })
   @UseInterceptors(
-    FileInterceptor("file", {
+    AnyFilesInterceptor({
       storage: memoryStorage(),
       limits: {
         fileSize: 5 * 1024 * 1024,
-        files: 1,
+        files: 5,
       },
       fileFilter: (req, file, cb) => {
         const allowed = ["image/jpeg", "image/png", "image/webp"];
@@ -66,20 +67,45 @@ export class ProductImagesController {
   )
   async uploadProductImage(
     @Param("productId") productId: string,
-    @UploadedFile() file: UploadedImageFile
+    @Req() req: any
   ): Promise<UploadProductImageResponse> {
-    if (!file) {
-      throw new BadRequestException("Image file is required");
+    const files = (req?.files as UploadedImageFile[] | undefined) || [];
+    const usable = files
+      .filter((f) => f && f.buffer && f.mimetype)
+      .filter((f) => f.fieldname === "files" || f.fieldname === "file")
+      .slice(0, 5);
+
+    if (usable.length < 1) {
+      throw new BadRequestException("Image file(s) are required");
     }
 
-    const saved = await this.service.saveProductImage({
-      productId,
-      buffer: file.buffer,
-      originalName: file.originalname,
-      mimetype: file.mimetype,
-    });
+    const saved =
+      usable.length === 1
+        ? [
+            {
+              ...(await this.service.saveProductImage({
+                productId,
+                buffer: usable[0].buffer,
+                originalName: usable[0].originalname,
+                mimetype: usable[0].mimetype,
+              })),
+              sortOrder: 1,
+            },
+          ]
+        : await this.service.saveProductImages({
+            productId,
+            files: usable.map((f) => ({
+              buffer: f.buffer,
+              originalName: f.originalname,
+              mimetype: f.mimetype,
+            })),
+          });
 
-    return saved;
+    return {
+      url: saved?.[0]?.url,
+      fileName: saved?.[0]?.fileName,
+      images: saved,
+    };
   }
 
   @Delete("image/:fileName")

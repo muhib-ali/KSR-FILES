@@ -59,6 +59,25 @@ export class ProductImagesService {
     };
   }
 
+  async saveProductImages(params: {
+    productId: string;
+    files: Array<{ buffer: Buffer; originalName: string; mimetype: string }>;
+  }): Promise<Array<{ fileName: string; url: string; sortOrder: number }>> {
+    const list = (params.files || []).slice(0, 5);
+    const out: Array<{ fileName: string; url: string; sortOrder: number }> = [];
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      const saved = await this.saveProductImage({
+        productId: params.productId,
+        buffer: f.buffer,
+        originalName: f.originalName,
+        mimetype: f.mimetype,
+      });
+      out.push({ ...saved, sortOrder: i + 1 });
+    }
+    return out;
+  }
+
   private guessExtension(originalName: string, mimetype: string): string {
     const lower = originalName.toLowerCase();
     if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return ".jpg";

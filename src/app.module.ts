@@ -11,6 +11,7 @@ import { appDataSourceOptions } from "./config/database.config";
 import { SharedModule } from "./shared/shared.module";
 import { AuthModule } from "./auth/auth.module";
 import { ProductImagesModule } from "./product-images/product-images.module";
+import { ProductVideosModule } from "./product-videos/product-videos.module";
 import { HealthModule } from "./health/health.module";
 
 @Module({
@@ -46,6 +47,7 @@ import { HealthModule } from "./health/health.module";
 
     AuthModule,
     ProductImagesModule,
+    ProductVideosModule,
     HealthModule,
   ],
   providers: [
