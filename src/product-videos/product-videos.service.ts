@@ -61,10 +61,19 @@ export class ProductVideosService {
 
   private guessExtension(originalName: string, mimetype: string): string {
     const lower = originalName.toLowerCase();
+    
+    // Check file extension first
     if (lower.endsWith(".mp4")) return ".mp4";
-
+    if (lower.endsWith(".webm")) return ".webm";
+    if (lower.endsWith(".ogg")) return ".ogg";
+    if (lower.endsWith(".mov") || lower.endsWith(".qt")) return ".mov";
+    
+    // Check MIME type
     if (mimetype === "video/mp4") return ".mp4";
+    if (mimetype === "video/webm") return ".webm";
+    if (mimetype === "video/ogg") return ".ogg";
+    if (mimetype === "video/quicktime") return ".mov";
 
-    return "";
+    return ".mp4"; // Default to mp4 if unknown
   }
 }

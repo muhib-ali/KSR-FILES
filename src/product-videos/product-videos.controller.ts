@@ -55,9 +55,9 @@ export class ProductVideosController {
         fileSize: 50 * 1024 * 1024, // 50MB
       },
       fileFilter: (req, file, cb) => {
-        const allowed = ["video/mp4"];
+        const allowed = ["video/mp4", "video/webm", "video/ogg", "video/quicktime"];
         if (!allowed.includes(file.mimetype)) {
-          return cb(new BadRequestException("Only MP4 videos are allowed") as any, false);
+          return cb(new BadRequestException("Only mp4, webm, ogg, quicktime videos are allowed") as any, false);
         }
         cb(null, true);
       },

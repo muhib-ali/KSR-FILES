@@ -10,6 +10,7 @@ import { GlobalExceptionFilter } from "./filters/global-exception.filter";
 async function bootstrap() {
   const storageRoot = join(process.cwd(), process.env.STORAGE_ROOT || "storage");
   await fs.mkdir(join(storageRoot, "products"), { recursive: true });
+  await fs.mkdir(join(storageRoot, "videos"), { recursive: true });
 
   const app = await NestFactory.create(AppModule);
   const logger = new Logger("Bootstrap");
