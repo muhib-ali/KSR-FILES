@@ -56,8 +56,8 @@ async function bootstrap() {
     },
   });
 
-  const port = process.env.APP_PORT || 3003;
-  await app.listen(port);
+  const port = process.env.PORT || process.env.APP_PORT || 3003;
+  await app.listen(port, "0.0.0.0");
 
   logger.log(`\uD83D\uDE80 Files backend running on: http://localhost:${port}`);
   logger.log(`\uD83D\uDCD6 Swagger: http://localhost:${port}/api`);

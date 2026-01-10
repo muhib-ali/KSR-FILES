@@ -46,7 +46,7 @@ export class ProductImagesController {
   @Post(":productId/image")
   @ApiBearerAuth("JWT-auth")
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: "Upload product image(s) (max 5)" })
+  @ApiOperation({ summary: "Upload product image(s) (max 10)" })
   @ApiConsumes("multipart/form-data")
   @ApiResponse({ status: 201, type: UploadProductImageResponse })
   @UseInterceptors(
@@ -54,7 +54,7 @@ export class ProductImagesController {
       storage: memoryStorage(),
       limits: {
         fileSize: 5 * 1024 * 1024,
-        files: 5,
+        files: 10,
       },
       fileFilter: (req, file, cb) => {
         const allowed = ["image/jpeg", "image/png", "image/webp"];
@@ -73,7 +73,7 @@ export class ProductImagesController {
     const usable = files
       .filter((f) => f && f.buffer && f.mimetype)
       .filter((f) => f.fieldname === "files" || f.fieldname === "file")
-      .slice(0, 5);
+      .slice(0, 10);
 
     if (usable.length < 1) {
       throw new BadRequestException("Image file(s) are required");
