@@ -9,7 +9,12 @@ export const dataSourceOptions: DataSourceOptions = {
   database: process.env.DB_NAME || "ksrDb",
   schema: "public",
   synchronize: false,
-  ssl: process.env.DB_SSL === "true",
+  ssl:
+    process.env.DB_SSL === "true"
+      ? {
+        rejectUnauthorized: false,
+      }
+      : false,
   entities: [__dirname + "/../entities/*.entity{.ts,.js}"],
   migrations: ["migrations/*{.ts,.js}"],
 };
@@ -23,7 +28,12 @@ export const appDataSourceOptions: DataSourceOptions = {
   database: process.env.DB_NAME || "ksrDb",
   schema: "public",
   synchronize: false,
-  ssl: process.env.DB_SSL === "true",
+  ssl:
+    process.env.DB_SSL === "true"
+      ? {
+        rejectUnauthorized: false,
+      }
+      : false,
   entities: [__dirname + "/../entities/*.entity{.ts,.js}"],
 };
 
