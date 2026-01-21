@@ -33,7 +33,7 @@ export class AuthService {
       return null;
     }
 
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.userRepository.findOne({ where: { id: tokenRecord.userId } });
     return user || null;
   }
 }
