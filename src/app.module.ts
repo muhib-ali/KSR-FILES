@@ -14,6 +14,7 @@ import { ProductImagesModule } from "./product-images/product-images.module";
 import { ProductVideosModule } from "./product-videos/product-videos.module";
 import { BlogImagesModule } from "./blog-images/blog-images.module";
 import { HealthModule } from "./health/health.module";
+import { ZipGalleryModule } from "./zip-gallery/zip-gallery.module";
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { HealthModule } from "./health/health.module";
     ProductVideosModule,
     BlogImagesModule,
     HealthModule,
+    ZipGalleryModule,
   ],
   providers: [
     {

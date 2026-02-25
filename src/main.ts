@@ -12,6 +12,8 @@ async function bootstrap() {
   await fs.mkdir(join(storageRoot, "products"), { recursive: true });
   await fs.mkdir(join(storageRoot, "videos"), { recursive: true });
   await fs.mkdir(join(storageRoot, "blogs"), { recursive: true });
+  await fs.mkdir(join(storageRoot, "zip-gallery"), { recursive: true });
+  await fs.mkdir(join(storageRoot, "temp-zip"), { recursive: true });
 
   const app = await NestFactory.create(AppModule);
   const logger = new Logger("Bootstrap");
