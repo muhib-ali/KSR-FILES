@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Delete,
+  Logger,
   Post,
   Req,
   UseGuards,
@@ -18,9 +19,16 @@ import { ZipGalleryService } from "./zip-gallery.service";
 
 const FIVE_GB = 5 * 1024 * 1024 * 1024;
 
+function formatSize(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(2)} MB`;
+}
+
 @ApiTags("Zip Gallery")
 @Controller("v1/zip-gallery")
 export class ZipGalleryController {
+  private readonly logger = new Logger(ZipGalleryController.name);
+
   constructor(private readonly service: ZipGalleryService) {}
 
   @Post("upload")
@@ -63,12 +71,27 @@ export class ZipGalleryController {
     })
   )
   async uploadZip(@Req() req: any) {
+    const handlerStartAt = Date.now();
+
     const file = req?.file;
     if (!file?.path) {
       throw new BadRequestException("ZIP file is required");
     }
+
+    const sizeBytes = (file as any).size ?? 0;
+    this.logger.log(
+      `[ZipGallery] ZIP file received: ${file.originalname || file.path}, size: ${formatSize(sizeBytes)}`
+    );
+    this.logger.log(`[ZipGallery] Starting extraction...`);
+
     try {
-      const uploaded = await this.service.saveImagesFromZipFile(file.path);
+      const uploaded = await this.service.saveImagesFromZipFile(file.path, (count) => {
+        this.logger.log(`[ZipGallery] Extracted ${count} images so far...`);
+      });
+      const totalSec = ((Date.now() - handlerStartAt) / 1000).toFixed(1);
+      this.logger.log(
+        `[ZipGallery] Extraction complete: ${uploaded.length} images (handler total: ${totalSec}s)`
+      );
       return { uploaded };
     } finally {
       try {
