@@ -18,7 +18,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let status: number = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = "Internal server error";
     let error = "Internal Server Error";
 
@@ -34,6 +34,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       message = exception.message;
+      // Client closed connection (e.g. user navigated away during zip upload) — not a server error
+      if (message === "aborted") {
+        status = 499; // Client Closed Request (non-standard, used by nginx)
+        this.logger.warn(
+          `${request.method} ${request.url} - ${status} - client aborted`,
+          { method: request.method, url: request.url, userAgent: request.get("user-agent"), ip: request.ip }
+        );
+        const errorResponse = ResponseHelper.errorWithStatus(status, "Client closed request", "Error", null);
+        response.status(status).json(errorResponse);
+        return;
+      }
     }
 
     this.logger.error(

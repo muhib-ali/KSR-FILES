@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { createWriteStream } from "fs";
 import { promises as fs } from "fs";
 import { join } from "path";
@@ -28,8 +28,12 @@ function isEntryAllowed(entryFileName: string): boolean {
   return hasImageExtension(entryFileName);
 }
 
+const PROGRESS_LOG_EVERY = 100;
+
 @Injectable()
 export class ZipGalleryService {
+  private readonly logger = new Logger(ZipGalleryService.name);
+
   constructor(private config: AppConfigService) {}
 
   async ensureZipGalleryDir(): Promise<string> {
@@ -58,13 +62,20 @@ export class ZipGalleryService {
     return { deleted: fileNames.length, fileNames };
   }
 
-  async saveImagesFromZipFile(zipFilePath: string): Promise<Array<{ fileName: string; url: string }>> {
+  async saveImagesFromZipFile(
+    zipFilePath: string,
+    onProgress?: (extractedCount: number) => void,
+  ): Promise<Array<{ fileName: string; url: string }>> {
+    const startMs = Date.now();
+    this.logger.log(`[ZipGallery] Extraction started: ${zipFilePath}`);
+
     const zipGalleryDir = await this.ensureZipGalleryDir();
     const results: Array<{ fileName: string; url: string }> = [];
 
     await new Promise<void>((resolve, reject) => {
       yauzl.open(zipFilePath, { lazyEntries: true }, (err, zipfile) => {
         if (err) {
+          this.logger.error(`[ZipGallery] Failed to open ZIP: ${err.message}`);
           reject(err);
           return;
         }
@@ -72,6 +83,8 @@ export class ZipGalleryService {
           resolve();
           return;
         }
+
+        this.logger.log(`[ZipGallery] ZIP opened, reading and extracting entries...`);
 
         zipfile.readEntry();
         zipfile.on("entry", (entry: yauzl.Entry) => {
@@ -107,14 +120,25 @@ export class ZipGalleryService {
                 fileName,
                 url: this.buildPublicUrl(fileName),
               });
+              const n = results.length;
+              if (onProgress && n % PROGRESS_LOG_EVERY === 0) {
+                onProgress(n);
+              }
               zipfile.readEntry();
             });
             writeStream.on("error", () => zipfile.readEntry());
             readStream.on("error", () => zipfile.readEntry());
           });
         });
-        zipfile.on("end", () => resolve());
-        zipfile.on("error", reject);
+        zipfile.on("end", () => {
+          const elapsed = ((Date.now() - startMs) / 1000).toFixed(1);
+          this.logger.log(`[ZipGallery] Extraction finished: ${results.length} images in ${elapsed}s`);
+          resolve();
+        });
+        zipfile.on("error", (e) => {
+          this.logger.error(`[ZipGallery] ZIP error: ${(e as Error).message}`);
+          reject(e);
+        });
       });
     });
 
