@@ -60,6 +60,13 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || process.env.APP_PORT || 3003;
+
+  // Long-running ZIP upload + extraction: avoid ERR_HTTP2_PING_FAILED / connection drop (e.g. Railway)
+  const httpServer = app.getHttpServer();
+  httpServer.setTimeout(15 * 60 * 1000); // 15 min (match Railway max)
+  httpServer.keepAliveTimeout = 65000;   // 65s
+  httpServer.headersTimeout = 66000;     // > keepAliveTimeout
+
   await app.listen(port, "0.0.0.0");
 
   logger.log(`\uD83D\uDE80 Files backend running on: http://localhost:${port}`);
