@@ -2,8 +2,19 @@ import { Injectable, Logger } from "@nestjs/common";
 import { createWriteStream } from "fs";
 import { promises as fs } from "fs";
 import { join } from "path";
+import { randomUUID } from "crypto";
 import * as yauzl from "yauzl";
 import { AppConfigService } from "../config/config.service";
+
+const CHUNK_UPLOAD_MAX_BYTES = 100 * 1024 * 1024; // 100 MB per chunk (stay under 5 min on slow links)
+
+export type ZipGalleryJobStatus = "processing" | "completed" | "failed";
+
+export type ZipGalleryJob = {
+  status: ZipGalleryJobStatus;
+  uploaded?: Array<{ fileName: string; url: string }>;
+  error?: string;
+};
 
 const ALLOWED_EXT = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
 
@@ -33,6 +44,8 @@ const PROGRESS_LOG_EVERY = 100;
 @Injectable()
 export class ZipGalleryService {
   private readonly logger = new Logger(ZipGalleryService.name);
+  private readonly chunkedUploads = new Map<string, { tempPath: string }>();
+  private readonly jobs = new Map<string, ZipGalleryJob>();
 
   constructor(private config: AppConfigService) {}
 
@@ -44,6 +57,58 @@ export class ZipGalleryService {
 
   buildPublicUrl(fileName: string): string {
     return `${this.config.publicBaseUrl}/public/zip-gallery/${fileName}`;
+  }
+
+  /** Init a chunked upload; returns uploadId. Each chunk must be uploaded within 5 min (e.g. 100 MB). */
+  async initChunkedUpload(): Promise<{ uploadId: string }> {
+    const uploadId = randomUUID();
+    const tempDir = join(this.config.storageRoot, "temp-zip");
+    await fs.mkdir(tempDir, { recursive: true });
+    const tempPath = join(tempDir, `${uploadId}.zip`);
+    this.chunkedUploads.set(uploadId, { tempPath });
+    this.logger.log(`[ZipGallery] Chunked upload init: ${uploadId}`);
+    return { uploadId };
+  }
+
+  /** Append a chunk to the upload file. */
+  async appendChunk(uploadId: string, chunkFilePath: string): Promise<void> {
+    const meta = this.chunkedUploads.get(uploadId);
+    if (!meta) throw new Error("Invalid or expired uploadId");
+    const data = await fs.readFile(chunkFilePath);
+    if (data.length > CHUNK_UPLOAD_MAX_BYTES)
+      throw new Error(`Chunk too large (max ${CHUNK_UPLOAD_MAX_BYTES / 1024 / 1024} MB)`);
+    await fs.appendFile(meta.tempPath, data);
+    await fs.unlink(chunkFilePath).catch(() => {});
+  }
+
+  /** Complete chunked upload: start extraction in background, return jobId. Call GET /jobs/:jobId to poll. */
+  completeChunkedUpload(uploadId: string): { jobId: string } {
+    const meta = this.chunkedUploads.get(uploadId);
+    if (!meta) throw new Error("Invalid or expired uploadId");
+    this.chunkedUploads.delete(uploadId);
+    const jobId = randomUUID();
+    this.jobs.set(jobId, { status: "processing" });
+    const tempPath = meta.tempPath;
+    setImmediate(() => {
+      this.saveImagesFromZipFile(tempPath)
+        .then((uploaded) => {
+          this.jobs.set(jobId, { status: "completed", uploaded });
+          this.logger.log(`[ZipGallery] Job ${jobId} completed: ${uploaded.length} images`);
+        })
+        .catch((err) => {
+          this.jobs.set(jobId, { status: "failed", error: (err as Error).message });
+          this.logger.error(`[ZipGallery] Job ${jobId} failed: ${(err as Error).message}`);
+        })
+        .finally(() => {
+          fs.unlink(tempPath).catch(() => {});
+        });
+    });
+    this.logger.log(`[ZipGallery] Chunked upload complete: ${uploadId} -> job ${jobId}`);
+    return { jobId };
+  }
+
+  getJobStatus(jobId: string): ZipGalleryJob | null {
+    return this.jobs.get(jobId) ?? null;
   }
 
   /**
