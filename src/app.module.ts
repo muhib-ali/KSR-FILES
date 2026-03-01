@@ -45,6 +45,10 @@ import { ZipGalleryModule } from "./zip-gallery/zip-gallery.module";
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), process.env.STORAGE_ROOT || "storage"),
       serveRoot: "/public",
+      serveStaticOptions: {
+        index: false,
+        fallthrough: true,
+      },
     }),
 
     AuthModule,
