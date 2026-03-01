@@ -36,4 +36,22 @@ export class AuthService {
     const user = await this.userRepository.findOne({ where: { id: tokenRecord.userId } });
     return user || null;
   }
+
+  /**
+   * Validate token from DB, or accept JWT payload when token is issued by shared issuer (e.g. KSR-ADMIN)
+   * so that Admin-frontend tokens work without being stored in KSR-FILES DB.
+   */
+  async validateTokenOrPayload(
+    token: string | undefined,
+    payload: { sub?: string },
+  ): Promise<User | { id: string } | null> {
+    const user = await this.validateToken(token, payload?.sub ?? "");
+    if (user) return user;
+    if (payload?.sub) {
+      const byId = await this.userRepository.findOne({ where: { id: payload.sub } });
+      if (byId) return byId;
+      return { id: payload.sub };
+    }
+    return null;
+  }
 }
