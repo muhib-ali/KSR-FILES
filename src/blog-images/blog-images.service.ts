@@ -4,6 +4,7 @@ import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseHelper } from '../common/helpers/response.helper';
 import { AuthService } from '../auth/auth.service';
+import { AppConfigService } from '../config/config.service';
 
 type ImageFile = {
   buffer: Buffer;
@@ -17,7 +18,10 @@ export class BlogImagesService {
   private readonly storageRoot = join(process.cwd(), process.env.STORAGE_ROOT || 'storage');
   private readonly blogsDir = join(this.storageRoot, 'blogs');
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly config: AppConfigService,
+  ) {}
 
   async uploadBlogImage(file: ImageFile, authorization: string): Promise<any> {
     this.logger.log(`[uploadBlogImage] Starting upload for file: ${file.originalname}`);
@@ -49,9 +53,8 @@ export class BlogImagesService {
     const filePath = join(this.blogsDir, fileName);
     await fs.writeFile(filePath, file.buffer);
 
-    // Generate public URL
-    const baseUrl = process.env.FILES_BACKEND_URL || 'http://localhost:3003';
-    const publicUrl = `${baseUrl}/public/blogs/${fileName}`;
+    // Generate public URL (same base as product images / zip-gallery: FILES_PUBLIC_BASE_URL)
+    const publicUrl = `${this.config.publicBaseUrl}/public/blogs/${fileName}`;
 
     this.logger.log(`[uploadBlogImage] File saved successfully: ${fileName}`);
     this.logger.log(`[uploadBlogImage] Public URL: ${publicUrl}`);
