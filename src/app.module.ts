@@ -13,6 +13,7 @@ import { AuthModule } from "./auth/auth.module";
 import { ProductImagesModule } from "./product-images/product-images.module";
 import { ProductVideosModule } from "./product-videos/product-videos.module";
 import { BlogImagesModule } from "./blog-images/blog-images.module";
+import { CmsImagesModule } from "./cms-images/cms-images.module";
 import { HealthModule } from "./health/health.module";
 import { ZipGalleryModule } from "./zip-gallery/zip-gallery.module";
 
@@ -55,6 +56,7 @@ import { ZipGalleryModule } from "./zip-gallery/zip-gallery.module";
     ProductImagesModule,
     ProductVideosModule,
     BlogImagesModule,
+    CmsImagesModule,
     HealthModule,
     ZipGalleryModule,
   ],
